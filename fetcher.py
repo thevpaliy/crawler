@@ -1,34 +1,46 @@
-import requests
-import _base
 
-from urllib import parse
-from html.parser import HTMLParser
+class ExtractorFactory(object):
+  @staticmethod
+  def create_js_extractor(**kwargs):
+    processor = JSProcessor(**kwargs)
+    return JSExtractor(processor)
 
-class LinkFinder(HTMLParser):
-  def __init__(self, url):
-    super().__init__()
-    self.url = url
-    self.links = set()
+  @staticmethod
+  def create_file_extractor(**kwargs):
+    processor = FileProcessor(**kwargs)
+    return FileExtractor(processor)
 
-  def handle_starttag(self, tag, attrs):
-    if tag == 'a':
-      for attr, val in attrs:
-        if attr == 'href':
-          if not any((sc in val for sc in ['https','http'])):
-            val = parse.urljoin(self.url, val)
-          self.links.add(val)
+  @staticmethod
+  def create_link_extractor(**kwargs):
+    pass
 
+  @staticmethod
+  def create_contact_extractor(**kwargs):
+    processor = ContactProcessor(**kwargs)
+    return ContactExtractor(processor)
 
-class Fetcher(_base.Worker):
-  def _crawl_url(self, url):
-    response = requests.get(url)
-    finder = LinkFinder(url)
-    finder.feed(response.text)
-    return finder.links
+  @staticmethod
+  def create_regex_extractor(**kwargs):
+    processor = RegexProcessor(**kwargs)
+    return RegexExtractor(processor)
 
-  def run(self, timeout=None):
-    self._running = True
-    while self._running:
-      target_url = self._storage.fetch(timeout)
-      urls = self._crawl_url(target_url)
-      self._storage.push((target_url, urls))
+extractors = [ExtractorFactory.create_link_extractor()]
+extractors.append(ExtractorFactory.create_link_extractor())
+extractors.append(ExtractorFactory.create_link_extractor())
+extractors.append(ExtractorFactory.create_link_extractor())
+extractors.append(ExtractorFactory.create_link_extractor())
+
+looper = Looper(queue, extractors)
+looper.run()
+
+'''
+1. Get the args from the user. Otherwise use the default info.
+ Seed URL should be provided (could be a bunch of URLs from a file)
+
+2. Provider sends the first URL to the Looper
+
+3. Looper reads the page, sends data to the extractors.
+
+4. Extractors extract information, send everything to the processors
+
+'''

@@ -1,50 +1,41 @@
 import abc
+import sys
+import threading
 
-class CrawlingResult(object):
-  __slots__ = ('target', 'urls')
+class Output(object):
+  __slots__ = ('_file', '_lock', '_worker')
 
-  def __init__(self, target, urls):
-    self.target = target
-    self.urls = urls
+  def __init__(self, file=None, lock=None, async=True):
+    self._file = file or sys.stdout
+    self._lock = lock or threading.Lock() # XXX: RLock maybe?
 
-
-class Storage(object):
-  __slots__ = ('_ready', '_arrived')
-
-  def __init__(self, ready, arrived):
-    self._ready = ready
-    self._arrived = arrived
-
-  def fetch(self, timeout=None):
-    return self._ready.get(timeout=timeout)
-
-  def get(self, timeout=None):
-    return self._arrived.get(timeout=timeout)
-
-  def put(self, data):
-    self._ready.put(data)
-
-  def push(self, data):
-    if isinstance(data, tuple):
-      data = CrawlingResult(*data)
-    elif not isinstance(data, CrawlingResult):
-      raise TypeError('should be either tuple or CrawlingResult')
-    self._arrived.put(data)
+  def write(self, writer):
+    with self._lock:
+      if self._file is not sys.stdout:
+        with open(self._file, 'a+') as fp:
+          writer(fp)
+      else:
+        writer(self._file)
+        self._file.write('\n')
 
 
-class Worker(abc.ABC):
-  def __init__(self, storage):
-    self._storage = storage
-    self._running = False
+class BaseProcessor(abc.ABC):
+  def __init__(self, output, allow_duplicates=True):
+    self._output = output
+    self._allow_duplicates = allow_duplicates
 
-  @property
-  def running(self):
-    return self._running
-
-  @running.setter
-  def running(self, is_running):
-    self._running = is_running
+  def _filter_duplicates(data):
+    return data
 
   @abc.abstractmethod
-  def run(self, timeout=None):
-    """ Perform necessary operations."""
+  def process(self, data):
+    pass
+
+
+class BaseExtractor(abc.ABC):
+  def __init__(self, processor):
+    self.processor = processor
+
+  @abc.abstractmethod
+  def extract(self, data):
+    """Extract whatever you need."""

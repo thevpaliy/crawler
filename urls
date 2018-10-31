@@ -1,0 +1,44 @@
+https://github.com
+https://google.com
+https://facebook.com
+https://twitter.com
+https://apple.com
+
+
+#!/usr/bin/env python3
+#-*- coding: utf-8 -*-
+
+from __future__  import print_function
+
+import os
+import threading
+import argparse
+import time
+import re
+
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument('-u', '--url', help='first url to start crawling')
+parser.add_argument('-t', '--threads', help='number of threads running')
+parser.add_argument('-o', '--output', help='output directory')
+parser.add_argument('-i', '--input', help='input directory')
+
+args = parser.parse_args()
+
+if not args.url and not args.input:
+  exit('Please provider either the `--url` or'
+  '`--input` parameter, so the crawler can have a starting URL for crawling.')
+
+if args.url:
+  start = args.url
+elif args.input:
+  with open(args.input) as fp:
+    start = []
+    for line in fp:
+      start.append(line)
+
+print(start)
+
+threads = args.threads or 16
+output = args.output
